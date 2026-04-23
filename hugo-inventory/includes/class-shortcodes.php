@@ -9,11 +9,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Frontend shortcodes for use in Oxygen Builder (or any editor).
  *
- * [hugo_inv_lookup]   — Search / scan bar with AJAX asset lookup.
- * [hugo_inv_assets]   — Filterable asset table.
- * [hugo_inv_checkout] — Checkout / check-in form for logged-in users.
- * [hugo_inv_stats]    — Status summary cards.
- * [hugo_inv_my_assets] — Assets assigned to the current user.
+ * [hugo_inv_lookup]     — Search / scan bar with AJAX asset lookup.
+ * [hugo_inv_assets]     — Filterable asset table.
+ * [hugo_inv_add_asset]  — Add Asset button + modal (standalone).
+ * [hugo_inv_checkout]   — Checkout / check-in form for logged-in users.
+ * [hugo_inv_stats]      — Status summary cards.
+ * [hugo_inv_my_assets]  — Assets assigned to the current user.
  */
 class Shortcodes {
 
@@ -21,9 +22,10 @@ class Shortcodes {
     private static bool $add_modal_rendered = false;
 
     public function __construct() {
-        add_shortcode( 'hugo_inv_lookup',    [ $this, 'render_lookup' ] );
-        add_shortcode( 'hugo_inv_assets',    [ $this, 'render_assets' ] );
-        add_shortcode( 'hugo_inv_checkout',  [ $this, 'render_checkout' ] );
+        add_shortcode( 'hugo_inv_lookup',     [ $this, 'render_lookup' ] );
+        add_shortcode( 'hugo_inv_assets',     [ $this, 'render_assets' ] );
+        add_shortcode( 'hugo_inv_add_asset',  [ $this, 'render_add_asset' ] );
+        add_shortcode( 'hugo_inv_checkout',   [ $this, 'render_checkout' ] );
         add_shortcode( 'hugo_inv_stats',     [ $this, 'render_stats' ] );
         add_shortcode( 'hugo_inv_my_assets', [ $this, 'render_my_assets' ] );
         add_shortcode( 'hugo_inv_dashboard', [ $this, 'render_dashboard' ] );
@@ -49,6 +51,7 @@ class Shortcodes {
         $check = $post->post_content ?? '';
         $has_shortcode = has_shortcode( $check, 'hugo_inv_lookup' )
             || has_shortcode( $check, 'hugo_inv_assets' )
+            || has_shortcode( $check, 'hugo_inv_add_asset' )
             || has_shortcode( $check, 'hugo_inv_checkout' )
             || has_shortcode( $check, 'hugo_inv_stats' )
             || has_shortcode( $check, 'hugo_inv_my_assets' )
@@ -60,6 +63,7 @@ class Shortcodes {
             if ( $oxy && (
                 str_contains( $oxy, 'hugo_inv_lookup' )
                 || str_contains( $oxy, 'hugo_inv_assets' )
+                || str_contains( $oxy, 'hugo_inv_add_asset' )
                 || str_contains( $oxy, 'hugo_inv_checkout' )
                 || str_contains( $oxy, 'hugo_inv_stats' )
                 || str_contains( $oxy, 'hugo_inv_my_assets' )
@@ -136,8 +140,6 @@ class Shortcodes {
             'category_id'     => '',
             'per_page'        => 50,
             'show_filters'    => 'yes',
-            'show_add_button' => 'auto',   // auto|yes|no
-            'add_url'         => '',
         ], $atts, 'hugo_inv_assets' );
 
         $list_args = [
@@ -160,18 +162,6 @@ class Shortcodes {
         $status_opts  = Models\Asset::status_options();
         $show_filters = ( $atts['show_filters'] === 'yes' );
 
-        // Determine whether to show the Add Asset button.
-        $show_add = false;
-        if ( $atts['show_add_button'] === 'yes' ) {
-            $show_add = true;
-        } elseif ( $atts['show_add_button'] === 'auto' ) {
-            $show_add = current_user_can( 'manage_options' );
-        }
-
-        $add_url = $atts['add_url']
-            ? esc_url( $atts['add_url'] )
-            : esc_url( admin_url( 'admin.php?page=hugo-inventory-assets&action=add' ) );
-
         $status_colors = [
             'available'   => '#46b450',
             'checked_out' => '#0073aa',
@@ -184,17 +174,11 @@ class Shortcodes {
         ?>
         <div class="hugo-inv-fe hugo-inv-fe-assets">
 
-            <!-- Toolbar: count + Add button -->
+            <!-- Toolbar: count -->
             <div class="hugo-inv-fe-assets-toolbar">
                 <span class="hugo-inv-fe-assets-count">
                     <span class="hugo-inv-fe-assets-count-visible"><?php echo esc_html( number_format_i18n( count( $items ) ) ); ?></span><?php if ( $total > count( $items ) ) : ?><span class="hugo-inv-fe-assets-count-sep"> <?php esc_html_e( 'of', 'hugo-inventory' ); ?> <?php echo esc_html( number_format_i18n( $total ) ); ?></span><?php endif; ?> <?php esc_html_e( 'assets', 'hugo-inventory' ); ?>
                 </span>
-                <?php if ( $show_add ) : ?>
-                <button type="button" class="hugo-inv-fe-btn hugo-inv-fe-btn-primary hugo-inv-fe-add-btn hugo-inv-fe-open-add-modal">
-                    <span class="hugo-inv-fe-add-icon" aria-hidden="true">+</span>
-                    <?php esc_html_e( 'Add Asset', 'hugo-inventory' ); ?>
-                </button>
-                <?php endif; ?>
             </div>
 
             <?php if ( $show_filters ) : ?>
@@ -246,7 +230,30 @@ class Shortcodes {
                 </table>
             </div>
         </div>
-        <?php if ( $show_add && ! self::$add_modal_rendered ) :
+        <?php
+        return ob_get_clean();
+    }
+
+    // ── Shortcode: Add Asset button + modal ────────────────────────────
+
+    public function render_add_asset( $atts ): string {
+        $atts = shortcode_atts( [
+            'label' => __( 'Add Asset', 'hugo-inventory' ),
+        ], $atts, 'hugo_inv_add_asset' );
+
+        if ( ! current_user_can( 'manage_options' ) ) {
+            return '';
+        }
+
+        ob_start();
+        ?>
+        <div class="hugo-inv-fe hugo-inv-fe-add-asset-trigger">
+            <button type="button" class="hugo-inv-fe-btn hugo-inv-fe-btn-primary hugo-inv-fe-add-btn hugo-inv-fe-open-add-modal">
+                <span class="hugo-inv-fe-add-icon" aria-hidden="true">+</span>
+                <?php echo esc_html( $atts['label'] ); ?>
+            </button>
+        </div>
+        <?php if ( ! self::$add_modal_rendered ) :
             self::$add_modal_rendered = true; ?>
         <div id="hugo-inv-add-asset-modal" class="hugo-inv-fe-modal-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="hugo-inv-add-asset-title">
             <div class="hugo-inv-fe-modal">
