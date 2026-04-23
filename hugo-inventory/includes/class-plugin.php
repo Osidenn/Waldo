@@ -39,11 +39,6 @@ final class Plugin {
         // Frontend shortcodes (always loaded — Oxygen renders outside is_admin).
         new Shortcodes();
 
-        // Oxygen Classic custom elements. OxygenElements itself has no OxyEl
-        // dependency — the OxyEl-extending classes are in oxygen-element-impl.php
-        // and are only require_once'd inside register() after class_exists('OxyEl').
-        new OxygenElements();
-
         // REST API
         add_action( 'rest_api_init', [ $this, 'register_rest_routes' ] );
     }
