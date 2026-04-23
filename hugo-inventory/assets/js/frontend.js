@@ -255,6 +255,169 @@
         });
     }
 
+    // ── Add Asset modal ──────────────────────────────────────────────
+
+    function initAddAssetModal() {
+        var $modal = $('#hugo-inv-add-asset-modal');
+        if (!$modal.length) return;
+
+        var $form      = $('#hugo-inv-add-asset-form');
+        var $msg       = $modal.find('.hugo-inv-fe-message');
+        var $submitBtn = $modal.find('.hugo-inv-fe-modal-submit');
+        var $orgSel    = $modal.find('[name="organization_id"]');
+        var $catSel    = $modal.find('[name="category_id"]');
+        var $locSel    = $modal.find('[name="location_id"]');
+        var $activeTable = null;
+
+        // Populate a <select> from a REST endpoint.
+        function populateSelect($sel, endpoint, placeholder) {
+            $.ajax({
+                url: api + endpoint,
+                data: { per_page: 200, order: 'ASC', orderby: 'name' },
+                beforeSend: function(xhr) { xhr.setRequestHeader('X-WP-Nonce', rest); },
+                success: function(data) {
+                    $sel.empty().append('<option value="">' + esc(placeholder) + '</option>');
+                    $.each(data, function(i, item) {
+                        $sel.append('<option value="' + parseInt(item.id, 10) + '">' + esc(item.name) + '</option>');
+                    });
+                }
+            });
+        }
+
+        populateSelect($orgSel, 'organizations', '\u2014 Select Organization \u2014');
+        populateSelect($catSel, 'categories',    '\u2014 None \u2014');
+        populateSelect($locSel, 'locations',     '\u2014 None \u2014');
+
+        function openModal($trigger) {
+            $activeTable = $trigger.closest('.hugo-inv-fe-assets');
+            $modal.css('display', 'flex');
+            $modal.find('[name="name"]').trigger('focus');
+            $('body').addClass('hugo-inv-fe-modal-open');
+        }
+
+        function closeModal() {
+            $modal.hide();
+            $form[0].reset();
+            $msg.hide().removeClass('success error');
+            $submitBtn.prop('disabled', false);
+            $('body').removeClass('hugo-inv-fe-modal-open');
+        }
+
+        // Open modal.
+        $(document).on('click', '.hugo-inv-fe-open-add-modal', function() {
+            openModal($(this));
+        });
+
+        // Close modal.
+        $modal.on('click', '.hugo-inv-fe-modal-close, .hugo-inv-fe-modal-cancel', closeModal);
+        $modal.on('click', function(e) {
+            if ($(e.target).is($modal)) closeModal();
+        });
+        $(document).on('keydown.hugoInvModal', function(e) {
+            if (e.key === 'Escape' && $modal.is(':visible')) closeModal();
+        });
+
+        // Submit form.
+        $form.on('submit', function(e) {
+            e.preventDefault();
+
+            var name  = $.trim($form.find('[name="name"]').val());
+            var orgId = parseInt($form.find('[name="organization_id"]').val(), 10) || 0;
+
+            if (!name)  { showMsg($msg, 'Asset name is required.', 'error');       return; }
+            if (!orgId) { showMsg($msg, 'Please select an organization.', 'error'); return; }
+
+            var payload = { name: name, organization_id: orgId };
+
+            var status = $form.find('[name="status"]').val();
+            if (status) payload.status = status;
+
+            var tag = $.trim($form.find('[name="asset_tag"]').val());
+            if (tag) payload.asset_tag = tag;
+
+            var serial = $.trim($form.find('[name="serial_number"]').val());
+            if (serial) payload.serial_number = serial;
+
+            var catId = parseInt($form.find('[name="category_id"]').val(), 10);
+            if (catId) payload.category_id = catId;
+
+            var locId = parseInt($form.find('[name="location_id"]').val(), 10);
+            if (locId) payload.location_id = locId;
+
+            var pDate = $form.find('[name="purchase_date"]').val();
+            if (pDate) payload.purchase_date = pDate;
+
+            var pCost = parseFloat($form.find('[name="purchase_cost"]').val());
+            if (!isNaN(pCost) && pCost >= 0) payload.purchase_cost = pCost;
+
+            var warranty = $form.find('[name="warranty_expiration"]').val();
+            if (warranty) payload.warranty_expiration = warranty;
+
+            var desc = $.trim($form.find('[name="description"]').val());
+            if (desc) payload.description = desc;
+
+            $submitBtn.prop('disabled', true);
+            $msg.hide();
+
+            $.ajax({
+                url: api + 'assets',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(payload),
+                beforeSend: function(xhr) { xhr.setRequestHeader('X-WP-Nonce', rest); },
+                success: function(asset) {
+                    // Inject the new row into the assets table that triggered the modal.
+                    if ($activeTable && $activeTable.length) {
+                        var $tbody = $activeTable.find('.hugo-inv-fe-assets-table tbody');
+
+                        // Remove the "no assets" empty row if present.
+                        $tbody.find('tr:has(.hugo-inv-fe-empty)').remove();
+
+                        var sc = { available: '#46b450', checked_out: '#0073aa', in_repair: '#ffb900', retired: '#826eb4', lost: '#dc3232' };
+                        var bg     = sc[asset.status] || '#666';
+                        var fgRule = asset.status === 'in_repair' ? ';color:#23282d' : '';
+                        var orgN   = esc(asset.organization_name || '\u2014');
+                        var locN   = esc(asset.location_name || '\u2014');
+                        var sLabel = esc((asset.status || '').replace(/_/g, ' '));
+                        sLabel = sLabel.charAt(0).toUpperCase() + sLabel.slice(1);
+
+                        var $row = $('<tr>')
+                            .attr('data-status',       asset.status)
+                            .attr('data-search',       (asset.asset_tag + ' ' + asset.name + ' ' + (asset.organization_name || '') + ' ' + (asset.location_name || '') + ' ' + (asset.serial_number || '')).toLowerCase())
+                            .attr('data-asset_tag',    (asset.asset_tag || '').toLowerCase())
+                            .attr('data-name',         (asset.name || '').toLowerCase())
+                            .attr('data-organization', (asset.organization_name || '').toLowerCase())
+                            .attr('data-location',     (asset.location_name || '').toLowerCase())
+                            .attr('data-status-val',   asset.status)
+                            .html(
+                                '<td><code>' + esc(asset.asset_tag) + '</code></td>' +
+                                '<td>' + esc(asset.name) + '</td>' +
+                                '<td>' + orgN + '</td>' +
+                                '<td>' + locN + '</td>' +
+                                '<td><span class="hugo-inv-fe-status" style="background:' + bg + fgRule + '">' + sLabel + '</span></td>'
+                            );
+
+                        $tbody.prepend($row);
+
+                        // Increment the visible count display.
+                        var $countEl = $activeTable.find('.hugo-inv-fe-assets-count-visible');
+                        if ($countEl.length) {
+                            var cur = parseInt(($countEl.text() || '0').replace(/\D/g, ''), 10) || 0;
+                            $countEl.text((cur + 1).toLocaleString());
+                        }
+                    }
+
+                    closeModal();
+                },
+                error: function(xhr) {
+                    var errMsg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : i18n.error;
+                    showMsg($msg, errMsg, 'error');
+                    $submitBtn.prop('disabled', false);
+                }
+            });
+        });
+    }
+
     // ── Helpers ─────────────────────────────────────────────────────
 
     var statusColors = {
@@ -291,6 +454,7 @@
         initAssetsFilter();
         initAssetsSort();
         initCheckout();
+        initAddAssetModal();
     });
 
 })(jQuery);

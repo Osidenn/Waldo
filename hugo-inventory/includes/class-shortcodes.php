@@ -17,6 +17,9 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class Shortcodes {
 
+    /** Ensures the Add Asset modal HTML is only emitted once per page. */
+    private static bool $add_modal_rendered = false;
+
     public function __construct() {
         add_shortcode( 'hugo_inv_lookup',    [ $this, 'render_lookup' ] );
         add_shortcode( 'hugo_inv_assets',    [ $this, 'render_assets' ] );
@@ -187,10 +190,10 @@ class Shortcodes {
                     <span class="hugo-inv-fe-assets-count-visible"><?php echo esc_html( number_format_i18n( count( $items ) ) ); ?></span><?php if ( $total > count( $items ) ) : ?><span class="hugo-inv-fe-assets-count-sep"> <?php esc_html_e( 'of', 'hugo-inventory' ); ?> <?php echo esc_html( number_format_i18n( $total ) ); ?></span><?php endif; ?> <?php esc_html_e( 'assets', 'hugo-inventory' ); ?>
                 </span>
                 <?php if ( $show_add ) : ?>
-                <a href="<?php echo $add_url; ?>" class="hugo-inv-fe-btn hugo-inv-fe-btn-primary hugo-inv-fe-add-btn">
+                <button type="button" class="hugo-inv-fe-btn hugo-inv-fe-btn-primary hugo-inv-fe-add-btn hugo-inv-fe-open-add-modal">
                     <span class="hugo-inv-fe-add-icon" aria-hidden="true">+</span>
                     <?php esc_html_e( 'Add Asset', 'hugo-inventory' ); ?>
-                </a>
+                </button>
                 <?php endif; ?>
             </div>
 
@@ -243,6 +246,86 @@ class Shortcodes {
                 </table>
             </div>
         </div>
+        <?php if ( $show_add && ! self::$add_modal_rendered ) :
+            self::$add_modal_rendered = true; ?>
+        <div id="hugo-inv-add-asset-modal" class="hugo-inv-fe-modal-overlay" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="hugo-inv-add-asset-title">
+            <div class="hugo-inv-fe-modal">
+                <div class="hugo-inv-fe-modal-header">
+                    <h2 id="hugo-inv-add-asset-title" class="hugo-inv-fe-modal-title"><?php esc_html_e( 'Add New Asset', 'hugo-inventory' ); ?></h2>
+                    <button type="button" class="hugo-inv-fe-modal-close" aria-label="<?php esc_attr_e( 'Close', 'hugo-inventory' ); ?>">&times;</button>
+                </div>
+                <div class="hugo-inv-fe-modal-body">
+                    <form id="hugo-inv-add-asset-form" novalidate>
+                        <div class="hugo-inv-fe-modal-grid">
+                            <div class="hugo-inv-fe-field hugo-inv-fe-field-full">
+                                <label for="hugo-inv-aa-name"><?php esc_html_e( 'Asset Name', 'hugo-inventory' ); ?> <span class="hugo-inv-fe-required" aria-hidden="true">*</span></label>
+                                <input type="text" id="hugo-inv-aa-name" name="name" class="hugo-inv-fe-input" required autocomplete="off">
+                            </div>
+                            <div class="hugo-inv-fe-field">
+                                <label for="hugo-inv-aa-org"><?php esc_html_e( 'Organization', 'hugo-inventory' ); ?> <span class="hugo-inv-fe-required" aria-hidden="true">*</span></label>
+                                <select id="hugo-inv-aa-org" name="organization_id" class="hugo-inv-fe-select hugo-inv-fe-select-full" required>
+                                    <option value=""><?php esc_html_e( 'Loading…', 'hugo-inventory' ); ?></option>
+                                </select>
+                            </div>
+                            <div class="hugo-inv-fe-field">
+                                <label for="hugo-inv-aa-status"><?php esc_html_e( 'Status', 'hugo-inventory' ); ?></label>
+                                <select id="hugo-inv-aa-status" name="status" class="hugo-inv-fe-select hugo-inv-fe-select-full">
+                                    <option value="available"><?php esc_html_e( 'Available', 'hugo-inventory' ); ?></option>
+                                    <option value="checked_out"><?php esc_html_e( 'Checked Out', 'hugo-inventory' ); ?></option>
+                                    <option value="in_repair"><?php esc_html_e( 'In Repair', 'hugo-inventory' ); ?></option>
+                                    <option value="retired"><?php esc_html_e( 'Retired', 'hugo-inventory' ); ?></option>
+                                    <option value="lost"><?php esc_html_e( 'Lost', 'hugo-inventory' ); ?></option>
+                                </select>
+                            </div>
+                            <div class="hugo-inv-fe-field">
+                                <label for="hugo-inv-aa-tag"><?php esc_html_e( 'Asset Tag', 'hugo-inventory' ); ?> <small><?php esc_html_e( '(auto if blank)', 'hugo-inventory' ); ?></small></label>
+                                <input type="text" id="hugo-inv-aa-tag" name="asset_tag" class="hugo-inv-fe-input" placeholder="e.g. HUGO-0042">
+                            </div>
+                            <div class="hugo-inv-fe-field">
+                                <label for="hugo-inv-aa-serial"><?php esc_html_e( 'Serial Number', 'hugo-inventory' ); ?></label>
+                                <input type="text" id="hugo-inv-aa-serial" name="serial_number" class="hugo-inv-fe-input">
+                            </div>
+                            <div class="hugo-inv-fe-field">
+                                <label for="hugo-inv-aa-cat"><?php esc_html_e( 'Category', 'hugo-inventory' ); ?></label>
+                                <select id="hugo-inv-aa-cat" name="category_id" class="hugo-inv-fe-select hugo-inv-fe-select-full">
+                                    <option value=""><?php esc_html_e( '— None —', 'hugo-inventory' ); ?></option>
+                                </select>
+                            </div>
+                            <div class="hugo-inv-fe-field">
+                                <label for="hugo-inv-aa-loc"><?php esc_html_e( 'Location', 'hugo-inventory' ); ?></label>
+                                <select id="hugo-inv-aa-loc" name="location_id" class="hugo-inv-fe-select hugo-inv-fe-select-full">
+                                    <option value=""><?php esc_html_e( '— None —', 'hugo-inventory' ); ?></option>
+                                </select>
+                            </div>
+                            <div class="hugo-inv-fe-field">
+                                <label for="hugo-inv-aa-pdate"><?php esc_html_e( 'Purchase Date', 'hugo-inventory' ); ?></label>
+                                <input type="date" id="hugo-inv-aa-pdate" name="purchase_date" class="hugo-inv-fe-input">
+                            </div>
+                            <div class="hugo-inv-fe-field">
+                                <label for="hugo-inv-aa-pcost"><?php esc_html_e( 'Purchase Cost ($)', 'hugo-inventory' ); ?></label>
+                                <input type="number" id="hugo-inv-aa-pcost" name="purchase_cost" class="hugo-inv-fe-input" min="0" step="0.01" placeholder="0.00">
+                            </div>
+                            <div class="hugo-inv-fe-field">
+                                <label for="hugo-inv-aa-warranty"><?php esc_html_e( 'Warranty Expiration', 'hugo-inventory' ); ?></label>
+                                <input type="date" id="hugo-inv-aa-warranty" name="warranty_expiration" class="hugo-inv-fe-input">
+                            </div>
+                            <div class="hugo-inv-fe-field hugo-inv-fe-field-full">
+                                <label for="hugo-inv-aa-desc"><?php esc_html_e( 'Description', 'hugo-inventory' ); ?></label>
+                                <textarea id="hugo-inv-aa-desc" name="description" class="hugo-inv-fe-input" rows="3"></textarea>
+                            </div>
+                        </div><!-- /.hugo-inv-fe-modal-grid -->
+                        <div class="hugo-inv-fe-modal-footer">
+                            <div class="hugo-inv-fe-message" style="display:none;"></div>
+                            <div class="hugo-inv-fe-modal-actions">
+                                <button type="button" class="hugo-inv-fe-btn hugo-inv-fe-modal-cancel"><?php esc_html_e( 'Cancel', 'hugo-inventory' ); ?></button>
+                                <button type="submit" class="hugo-inv-fe-btn hugo-inv-fe-btn-primary hugo-inv-fe-modal-submit"><?php esc_html_e( 'Add Asset', 'hugo-inventory' ); ?></button>
+                            </div>
+                        </div>
+                    </form>
+                </div><!-- /.hugo-inv-fe-modal-body -->
+            </div><!-- /.hugo-inv-fe-modal -->
+        </div><!-- /#hugo-inv-add-asset-modal -->
+        <?php endif; ?>
         <?php
         return ob_get_clean();
     }

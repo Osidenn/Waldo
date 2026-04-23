@@ -37,11 +37,14 @@ Filterable, sortable asset table with a live count and optional Add Asset button
 | `per_page`         | `50`       | Number of assets to load                                                            |
 | `show_filters`     | `yes`      | Show search box + status dropdown (`yes`/`no`)                                      |
 | `show_add_button`  | `auto`     | Show Add Asset button — `auto` = admins only, `yes` = always, `no` = never         |
-| `add_url`          | admin page | Override the URL the Add Asset button points to                                     |
 
 **Toolbar:**
 - Displays a live asset count that updates as filters are applied
-- Add Asset button links to the admin add-asset page by default
+- **Add Asset button** opens a modal overlay — no page navigation required
+  - Dropdowns for Organization, Category, and Location are populated automatically from the REST API
+  - Required fields: Name, Organization
+  - Optional fields: Asset Tag (auto-generated if blank), Serial Number, Category, Location, Status, Purchase Date, Purchase Cost, Warranty Expiration, Description
+  - On success, the new asset row is prepended to the table and the count increments
 
 **Sorting:**
 - Click any column header to sort ascending ▲ or descending ▼
@@ -54,7 +57,7 @@ Filterable, sortable asset table with a live count and optional Add Asset button
 [hugo_inv_assets organization_id="2" per_page="100"]
 [hugo_inv_assets status="available" show_filters="no"]
 [hugo_inv_assets show_add_button="no"]
-[hugo_inv_assets show_add_button="yes" add_url="/submit-asset/"]
+[hugo_inv_assets show_add_button="yes"]
 ```
 
 ---

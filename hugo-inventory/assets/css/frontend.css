@@ -596,3 +596,126 @@
         grid-template-columns: 100px 1fr 35px;
     }
 }
+
+/* ═══════════════════════════════════════════
+   Add Asset modal [hugo_inv_assets]
+   ═══════════════════════════════════════════ */
+
+/* Overlay / backdrop */
+.hugo-inv-fe-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+body.hugo-inv-fe-modal-open {
+    overflow: hidden;
+}
+
+/* Modal container */
+.hugo-inv-fe-modal {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.25);
+    width: 100%;
+    max-width: 640px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    font-size: 15px;
+    color: #1e1e1e;
+    box-sizing: border-box;
+}
+.hugo-inv-fe-modal *, .hugo-inv-fe-modal *::before, .hugo-inv-fe-modal *::after {
+    box-sizing: inherit;
+}
+
+/* Modal header */
+.hugo-inv-fe-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px 16px;
+    border-bottom: 1px solid #e0e0e0;
+    flex-shrink: 0;
+}
+.hugo-inv-fe-modal-title {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: #1e1e1e;
+}
+.hugo-inv-fe-modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    line-height: 1;
+    cursor: pointer;
+    color: #888;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: color 0.2s, background 0.2s;
+}
+.hugo-inv-fe-modal-close:hover {
+    color: #1e1e1e;
+    background: #f0f0f1;
+}
+
+/* Modal body (scrollable) */
+.hugo-inv-fe-modal-body {
+    padding: 20px 24px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+/* 2-column form grid */
+.hugo-inv-fe-modal-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 20px;
+}
+.hugo-inv-fe-field-full {
+    grid-column: 1 / -1;
+}
+
+/* Full-width selects inside grid */
+.hugo-inv-fe-select-full {
+    width: 100%;
+    min-width: 0;
+}
+
+/* Required field asterisk */
+.hugo-inv-fe-required {
+    color: #dc3232;
+    margin-left: 2px;
+}
+
+/* Modal footer */
+.hugo-inv-fe-modal-footer {
+    padding: 16px 0 0;
+}
+.hugo-inv-fe-modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 8px;
+}
+
+/* Modal responsive */
+@media screen and (max-width: 560px) {
+    .hugo-inv-fe-modal-grid {
+        grid-template-columns: 1fr;
+    }
+    .hugo-inv-fe-modal-actions {
+        flex-direction: column-reverse;
+    }
+    .hugo-inv-fe-modal-actions .hugo-inv-fe-btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
